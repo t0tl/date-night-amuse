@@ -5,13 +5,15 @@ import { colors } from '../styles/commonStyles';
 interface IconProps {
   name: keyof typeof Ionicons.glyphMap;
   size?: number;
-  style?: object;
+  style?: any;
 }
 
 export default function Icon({ name, size = 40, style }: IconProps) {
+  const iconColor = style?.tintColor || colors.primary;
+  
   return (
     <View style={[styles.iconContainer, style]}>
-      <Ionicons name={name} size={size} color={colors.primary} />
+      <Ionicons name={name} size={size} color={iconColor} />
     </View>
   );
 }

@@ -1,10 +1,12 @@
 import { Stack, useGlobalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Platform, SafeAreaView } from 'react-native';
+import { Platform, SafeAreaView, View } from 'react-native';
 import { commonStyles } from '../styles/commonStyles';
 import { useEffect, useState } from 'react';
 import { setupErrorLogging } from '../utils/errorLogger';
+import { usePathname } from 'expo-router';
+import BottomTabBar from '../components/BottomTabBar';
 
 const STORAGE_KEY = 'emulated_device';
 
@@ -12,6 +14,12 @@ export default function RootLayout() {
   const actualInsets = useSafeAreaInsets();
   const { emulate } = useGlobalSearchParams<{ emulate?: string }>();
   const [storedEmulate, setStoredEmulate] = useState<string | null>(null);
+  const pathname = usePathname();
+
+  // Determine if we should show the bottom tab bar
+  const shouldShowTabBar = pathname.startsWith('/swipe') || 
+                          pathname.startsWith('/messages') || 
+                          pathname.startsWith('/profile');
 
   useEffect(() => {
     // Set up global error logging
@@ -49,17 +57,20 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <SafeAreaView style={[commonStyles.wrapper, { 
           paddingTop: insetsToUse.top,
-          paddingBottom: insetsToUse.bottom,
+          paddingBottom: shouldShowTabBar ? 0 : insetsToUse.bottom,
           paddingLeft: insetsToUse.left,
           paddingRight: insetsToUse.right,
        }]}>
         <StatusBar style="light" />
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            animation: 'default',
-          }}
-        />
+        <View style={{ flex: 1 }}>
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              animation: 'default',
+            }}
+          />
+          {shouldShowTabBar && <BottomTabBar />}
+        </View>
       </SafeAreaView>
     </SafeAreaProvider>
   );
