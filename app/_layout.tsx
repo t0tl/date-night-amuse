@@ -45,7 +45,7 @@ export default function RootLayout() {
   if (Platform.OS === 'web') {
     const simulatedInsets = {
       ios: { top: 47, bottom: 20, left: 0, right: 0 },
-      android: { top: 40, bottom: 0, left: 0, right: 0 },
+      android: { top: 20, bottom: 0, left: 0, right: 0 },
     };
 
     // Use stored emulate value if available, otherwise use the current emulate parameter
@@ -53,9 +53,18 @@ export default function RootLayout() {
     insetsToUse = deviceToEmulate ? simulatedInsets[deviceToEmulate as keyof typeof simulatedInsets] || actualInsets : actualInsets;
   }
 
+  // Reduce top padding for Android
+  if (Platform.OS === 'android') {
+    insetsToUse = {
+      ...insetsToUse,
+      top: Math.max(insetsToUse.top, 10)
+    };
+  }
+
   return (
     <SafeAreaProvider>
       <SafeAreaView style={[commonStyles.wrapper, { 
+          backgroundColor: '#000000',
           paddingTop: insetsToUse.top,
           paddingBottom: shouldShowTabBar ? 0 : insetsToUse.bottom,
           paddingLeft: insetsToUse.left,

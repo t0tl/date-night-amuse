@@ -1,16 +1,18 @@
 import { StyleSheet, ViewStyle, TextStyle } from 'react-native';
 
 export const colors = {
-  primary: '#FF69B4',      // Soft pink
+  primary: '#a56366',      // Soft pink
   secondary: '#20B2AA',    // Teal
   accent: '#FF7F50',       // Coral
-  background: '#2C2C2C',   // Dark gray background
-  card: '#3A3A3A',         // Card background
-  text: '#FFFFFF',         // White text
-  textSecondary: '#B0B0B0', // Secondary text
+  background: '#fcf8f8',   // Soft pink/beige background
+  card: '#f3e7e8',         // Light pink card background
+  text: '#333333',         // Dark text
+  textSecondary: '#666666', // Secondary text
+  textBox: '#a56366',      // Text color inside text boxes
   success: '#4CAF50',      // Green for matches
   danger: '#F44336',       // Red for pass
-  border: '#4A4A4A',       // Border color
+  border: '#E0E0E0',       // Light border color
+  gray: '#fcf8f8',
 };
 
 export const buttonStyles = StyleSheet.create({

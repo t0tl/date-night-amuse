@@ -1,6 +1,6 @@
-import { View, Text, Image, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
+import { View, Text, Image, TouchableOpacity, ScrollView, Dimensions, Animated } from 'react-native';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { commonStyles, colors } from '../../styles/commonStyles';
 import Button from '../../components/Button';
 import Icon from '../../components/Icon';
@@ -27,11 +27,11 @@ const restaurants = [
       qa: [
         {
           question: "What's your ideal first date?",
-          answer: "A cozy dinner at an authentic Italian restaurant where we can share stories over handmade pasta and good wine."
+          answer: "Sharing stories over handmade pasta and good wine."
         },
         {
           question: "What's your favorite cuisine?",
-          answer: "I absolutely love Italian food! There's something magical about fresh ingredients and traditional recipes passed down through generations."
+          answer: "I absolutely love Italian food!"
         }
       ]
     }
@@ -54,11 +54,11 @@ const restaurants = [
       qa: [
         {
           question: "What's your go-to comfort food?",
-          answer: "Fresh sushi! I love the artistry and precision that goes into each piece. It's like edible art that brings me peace."
+          answer: "Fresh sushi!"
         },
         {
           question: "How do you like to spend your weekends?",
-          answer: "Exploring new restaurants and trying different cuisines. I believe food is a universal language that brings people together."
+          answer: "Exploring new restaurants and trying different cuisines."
         }
       ]
     }
@@ -177,8 +177,31 @@ export default function SwipeScreen() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [likedPhotos, setLikedPhotos] = useState<{[key: string]: boolean}>({});
   const [matches, setMatches] = useState<typeof restaurants>([]);
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState({
+    radius: 25,
+    ageRange: [22, 35],
+    heightRange: [5.2, 6.2],
+    activeToday: false
+  });
 
+  const scrollY = useRef(new Animated.Value(0)).current;
   const currentRestaurant = restaurants[currentIndex];
+
+  // Calculate header opacity based on scroll position
+  // Header starts appearing when name section starts going out of view (around 150px)
+  // Becomes fully opaque when name is completely out of view (around 250px)
+  const headerOpacity = scrollY.interpolate({
+    inputRange: [150, 250],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
+
+  const headerBlur = scrollY.interpolate({
+    inputRange: [150, 200, 250],
+    outputRange: [0, 5, 0],
+    extrapolate: 'clamp',
+  });
 
   const handlePhotoLike = (restaurantId: number, photoIndex: number) => {
     const key = `${restaurantId}-${photoIndex}`;
@@ -234,35 +257,38 @@ export default function SwipeScreen() {
 
   return (
     <View style={commonStyles.container}>
-      {/* Header */}
-      <View style={{
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
+      {/* Sticky Header with Name */}
+      <Animated.View style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 100,
+        backgroundColor: 'rgba(252, 248, 248, 0.95)',
         paddingHorizontal: 20,
-        paddingTop: 20,
-        paddingBottom: 10,
-        backgroundColor: 'white',
+        paddingVertical: 15,
+        paddingTop: 50,
         borderBottomWidth: 1,
-        borderBottomColor: '#f0f0f0',
+        borderBottomColor: 'rgba(240, 240, 240, 0.8)',
+        opacity: headerOpacity,
       }}>
-        <Text style={[commonStyles.title, { fontSize: 24, color: colors.primary }]}>
-          amuse
+        <Text style={{ 
+          fontSize: 24, 
+          fontWeight: 'bold',
+          color: colors.text,
+          fontFamily: 'OpenSans_700Bold',
+          textAlign: 'center',
+        }}>
+          {currentRestaurant.user.firstName}
         </Text>
-        
-        {/* Progress indicator */}
-        <Text style={[commonStyles.text, { color: colors.textSecondary }]}>
-          {currentIndex + 1} of {restaurants.length}
-        </Text>
-      </View>
+      </Animated.View>
 
       {/* Reject Button Overlay */}
       <TouchableOpacity
         style={{
           position: 'absolute',
           left: 20,
-          top: '50%',
-          transform: [{ translateY: -30 }],
+          bottom: 20,
           backgroundColor: '#ff4458',
           width: 60,
           height: 60,
@@ -282,39 +308,302 @@ export default function SwipeScreen() {
       </TouchableOpacity>
 
       {/* Scrollable Content */}
-      <ScrollView 
+      <Animated.ScrollView 
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingBottom: 20 }}
         showsVerticalScrollIndicator={false}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: false }
+        )}
+        scrollEventThrottle={16}
       >
+        {/* Settings Bar */}
+        <View style={{
+          paddingHorizontal: 20,
+          paddingVertical: 15,
+          backgroundColor: '#fcf8f8',
+          borderBottomWidth: 1,
+          borderBottomColor: '#f0f0f0',
+        }}>
+          <TouchableOpacity
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+            onPress={() => setShowFilters(!showFilters)}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+              <Icon name="options" size={20} style={{ tintColor: colors.primary, marginRight: 10 }} />
+              <Text style={{
+                fontSize: 16,
+                color: colors.primary,
+                fontWeight: '600',
+              }}>
+                Filters
+              </Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={{
+                fontSize: 14,
+                color: colors.textSecondary,
+                marginRight: 8,
+              }}>
+                {filters.radius}mi • {filters.ageRange[0]}-{filters.ageRange[1]} • {filters.heightRange[0]}'-{filters.heightRange[1]}' {filters.activeToday ? '• Active' : ''}
+              </Text>
+              <Icon 
+                name={showFilters ? "chevron-up" : "chevron-down"} 
+                size={16} 
+                style={{ tintColor: colors.textSecondary }} 
+              />
+            </View>
+          </TouchableOpacity>
+
+          {showFilters && (
+            <View style={{
+              marginTop: 15,
+              backgroundColor: 'white',
+              borderRadius: 12,
+              padding: 20,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.1,
+              shadowRadius: 4,
+              elevation: 3,
+            }}>
+              {/* Radius */}
+              <View style={{ marginBottom: 20 }}>
+                <Text style={{
+                  fontSize: 16,
+                  fontWeight: '600',
+                  color: colors.text,
+                  marginBottom: 10,
+                }}>
+                  Radius: {filters.radius} miles
+                </Text>
+                <View style={{
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}>
+                  {[5, 10, 25, 50, 100].map((radius) => (
+                    <TouchableOpacity
+                      key={radius}
+                      style={{
+                        paddingHorizontal: 12,
+                        paddingVertical: 8,
+                        borderRadius: 20,
+                        backgroundColor: filters.radius === radius ? colors.primary : '#f0f0f0',
+                      }}
+                      onPress={() => setFilters(prev => ({ ...prev, radius }))}
+                    >
+                      <Text style={{
+                        color: filters.radius === radius ? 'white' : colors.text,
+                        fontSize: 14,
+                        fontWeight: '500',
+                      }}>
+                        {radius}mi
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Age Range */}
+              <View style={{ marginBottom: 20 }}>
+                <Text style={{
+                  fontSize: 16,
+                  fontWeight: '600',
+                  color: colors.text,
+                  marginBottom: 10,
+                }}>
+                  Age: {filters.ageRange[0]} - {filters.ageRange[1]}
+                </Text>
+                <View style={{
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}>
+                  {['18-25', '22-30', '25-35', '30-40', '35+'].map((range, index) => {
+                    const ranges = [[18, 25], [22, 30], [25, 35], [30, 40], [35, 50]];
+                    const isSelected = filters.ageRange[0] === ranges[index][0] && filters.ageRange[1] === ranges[index][1];
+                    return (
+                      <TouchableOpacity
+                        key={range}
+                        style={{
+                          paddingHorizontal: 12,
+                          paddingVertical: 8,
+                          borderRadius: 20,
+                          backgroundColor: isSelected ? colors.primary : '#f0f0f0',
+                        }}
+                        onPress={() => setFilters(prev => ({ ...prev, ageRange: ranges[index] }))}
+                      >
+                        <Text style={{
+                          color: isSelected ? 'white' : colors.text,
+                          fontSize: 14,
+                          fontWeight: '500',
+                        }}>
+                          {range}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+
+              {/* Height Range */}
+              <View style={{ marginBottom: 20 }}>
+                <Text style={{
+                  fontSize: 16,
+                  fontWeight: '600',
+                  color: colors.text,
+                  marginBottom: 10,
+                }}>
+                  Height: {filters.heightRange[0]}' - {filters.heightRange[1]}'
+                </Text>
+                <View style={{
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}>
+                  {['5.0-5.5', '5.2-5.8', '5.5-6.0', '5.8-6.2', '6.0+'].map((range, index) => {
+                    const ranges = [[5.0, 5.5], [5.2, 5.8], [5.5, 6.0], [5.8, 6.2], [6.0, 6.5]];
+                    const isSelected = filters.heightRange[0] === ranges[index][0] && filters.heightRange[1] === ranges[index][1];
+                    return (
+                      <TouchableOpacity
+                        key={range}
+                        style={{
+                          paddingHorizontal: 12,
+                          paddingVertical: 8,
+                          borderRadius: 20,
+                          backgroundColor: isSelected ? colors.primary : '#f0f0f0',
+                        }}
+                        onPress={() => setFilters(prev => ({ ...prev, heightRange: ranges[index] }))}
+                      >
+                        <Text style={{
+                          color: isSelected ? 'white' : colors.text,
+                          fontSize: 14,
+                          fontWeight: '500',
+                        }}>
+                          {range}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+
+              {/* Active Today */}
+              <View>
+                <TouchableOpacity
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    paddingVertical: 10,
+                  }}
+                  onPress={() => setFilters(prev => ({ ...prev, activeToday: !prev.activeToday }))}
+                >
+                  <Text style={{
+                    fontSize: 16,
+                    fontWeight: '600',
+                    color: colors.text,
+                  }}>
+                    Active Today
+                  </Text>
+                  <View style={{
+                    width: 50,
+                    height: 30,
+                    borderRadius: 15,
+                    backgroundColor: filters.activeToday ? colors.primary : '#e0e0e0',
+                    justifyContent: 'center',
+                    paddingHorizontal: 2,
+                  }}>
+                    <View style={{
+                      width: 26,
+                      height: 26,
+                      borderRadius: 13,
+                      backgroundColor: 'white',
+                      alignSelf: filters.activeToday ? 'flex-end' : 'flex-start',
+                    }} />
+                  </View>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+        </View>
+
         {/* User's First Name */}
         <View style={{ 
           paddingHorizontal: 20,
           paddingVertical: 15,
-          backgroundColor: 'white',
+          backgroundColor: '#fcf8f8',
         }}>
-          <Text style={{ 
-            fontSize: 28, 
-            fontWeight: 'bold',
-            color: colors.text,
-            fontFamily: 'OpenSans_700Bold'
+          <View style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
           }}>
-            {currentRestaurant.user.firstName}
-          </Text>
-          <Text style={[
-            commonStyles.text,
-            { 
-              color: colors.primary,
-              fontSize: 16,
-              marginTop: 2
-            }
-          ]}>
-            Wants to try {currentRestaurant.name}
-          </Text>
+            <Text style={{ 
+              fontSize: 28, 
+              fontWeight: 'bold',
+              color: colors.text,
+              fontFamily: 'OpenSans_700Bold'
+            }}>
+              {currentRestaurant.user.firstName}
+            </Text>
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 15,
+            }}>
+              <TouchableOpacity
+                style={{
+                  borderRadius: 20,
+                  padding: 8,
+                }}
+                onPress={() => {
+                  // Handle undo action
+                  if (currentIndex > 0) {
+                    setCurrentIndex(prev => prev - 1);
+                  }
+                }}
+              >
+                <Icon name="arrow-undo" size={20} style={{ tintColor: colors.textSecondary }} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{
+                  borderRadius: 20,
+                  padding: 8,
+                }}
+                onPress={() => {
+                  // Handle menu action
+                  console.log('Menu pressed');
+                }}
+              >
+                <Icon name="ellipsis-horizontal" size={20} style={{ tintColor: colors.textSecondary }} />
+              </TouchableOpacity>
+            </View>
+          </View>
+          <View style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}>
+            <Text style={{
+              color: '#4C3A8D', // Less bright purple
+              fontSize: 11,
+              fontWeight: '400',
+            }}>
+              Active today
+            </Text>
+          </View>
         </View>
 
         {/* Photo Grid with Like Buttons */}
         <View style={{ paddingHorizontal: 20 }}>
+          {/* First pair of images */}
           <View style={{ 
             flexDirection: 'row', 
             marginBottom: 4
@@ -351,14 +640,58 @@ export default function SwipeScreen() {
                     name="heart" 
                     size={20} 
                     style={{ 
-                      tintColor: colors.accent
+                      tintColor: colors.gray
                     }} 
                   />
                 </TouchableOpacity>
               </View>
             ))}
           </View>
-          
+        </View>
+
+        {/* First Q&A */}
+        <View style={{ paddingHorizontal: 20, marginTop: 20 }}>
+          <View style={{
+            backgroundColor: 'white',
+            borderRadius: 15,
+            paddingHorizontal: 40,
+            paddingVertical: 65,
+            marginBottom: 20,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 8,
+            elevation: 3,
+          }}>
+            <Text style={[
+              commonStyles.text, 
+              { 
+                fontWeight: '600',
+                color: colors.primary,
+                marginBottom: 15,
+                fontSize: 18,
+                textAlign: 'left'
+              }
+            ]}>
+              {currentRestaurant.user.qa[0].question}
+            </Text>
+            <Text style={[
+              commonStyles.text, 
+              { 
+                color: colors.textBox,
+                lineHeight: 32,
+                fontSize: 25,
+                fontWeight: 'bold',
+                textAlign: 'left'
+              }
+            ]}>
+              {currentRestaurant.user.qa[0].answer}
+            </Text>
+          </View>
+        </View>
+
+        {/* Second pair of images */}
+        <View style={{ paddingHorizontal: 20 }}>
           <View style={{ 
             flexDirection: 'row',
             marginTop: 4
@@ -395,7 +728,7 @@ export default function SwipeScreen() {
                     name="heart" 
                     size={20} 
                     style={{ 
-                      tintColor: colors.accent
+                      tintColor: colors.gray
                     }} 
                   />
                 </TouchableOpacity>
@@ -404,49 +737,51 @@ export default function SwipeScreen() {
           </View>
         </View>
 
-        {/* Q&A Section */}
+        {/* Second Q&A */}
         <View style={{ paddingHorizontal: 20, marginTop: 20 }}>
-          {currentRestaurant.user.qa.map((qa, index) => (
-            <View key={index} style={{
-              backgroundColor: 'white',
-              borderRadius: 15,
-              padding: 20,
-              marginBottom: 15,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.1,
-              shadowRadius: 8,
-              elevation: 3,
-            }}>
-              <Text style={[
-                commonStyles.text, 
-                { 
-                  fontWeight: 'bold', 
-                  color: colors.primary,
-                  marginBottom: 10,
-                  fontSize: 16
-                }
-              ]}>
-                {qa.question}
-              </Text>
-              <Text style={[
-                commonStyles.text, 
-                { 
-                  color: colors.text,
-                  lineHeight: 22,
-                  fontSize: 15
-                }
-              ]}>
-                {qa.answer}
-              </Text>
-            </View>
-          ))}
+          <View style={{
+            backgroundColor: 'white',
+            borderRadius: 15,
+            paddingHorizontal: 40,
+            paddingVertical: 65,
+            marginBottom: 20,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 8,
+            elevation: 3,
+          }}>
+            <Text style={[
+              commonStyles.text, 
+              { 
+                fontWeight: '600',
+                color: colors.primary,
+                marginBottom: 15,
+                fontSize: 18,
+                textAlign: 'left'
+              }
+            ]}>
+              {currentRestaurant.user.qa[1].question}
+            </Text>
+            <Text style={[
+              commonStyles.text, 
+              { 
+                color: colors.textBox,
+                lineHeight: 32,
+                fontSize: 25,
+                fontWeight: 'bold',
+                textAlign: 'left'
+              }
+            ]}>
+              {currentRestaurant.user.qa[1].answer}
+            </Text>
+          </View>
 
           {/* Restaurant Info */}
           <View style={{
             backgroundColor: colors.primary,
             borderRadius: 15,
-            padding: 20,
+            padding: 25,
             marginBottom: 20,
           }}>
             <Text style={[
@@ -454,8 +789,8 @@ export default function SwipeScreen() {
               { 
                 color: 'white',
                 fontWeight: 'bold',
-                fontSize: 18,
-                marginBottom: 8
+                fontSize: 20,
+                marginBottom: 10
               }
             ]}>
               {currentRestaurant.name}
@@ -464,9 +799,9 @@ export default function SwipeScreen() {
               commonStyles.text, 
               { 
                 color: 'white',
-                fontSize: 14,
+                fontSize: 16,
                 opacity: 0.9,
-                marginBottom: 8
+                marginBottom: 10
               }
             ]}>
               {currentRestaurant.cuisine} • ⭐ {currentRestaurant.rating}
@@ -475,16 +810,16 @@ export default function SwipeScreen() {
               commonStyles.text, 
               { 
                 color: 'white',
-                fontSize: 14,
+                fontSize: 16,
                 opacity: 0.9,
-                lineHeight: 20
+                lineHeight: 24
               }
             ]}>
               {currentRestaurant.description}
             </Text>
           </View>
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
     </View>
   );
 }
